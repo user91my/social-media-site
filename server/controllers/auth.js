@@ -62,7 +62,12 @@ export const login = async (req, res) => {
     // Create the jwt token
     // https://jwt.io/
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-    delete user.password; // ensure password does not get sent back to the frontend
+
+    // Delete the "password" field from the "user" object so that
+    // it doesn't get sent to the frontend.
+    // NOTE: Due to MongoDB's configuration, the "user._doc" property
+    //       is where the desired payload is actually located.
+    delete user._doc.password;
 
     res.status(200).json({ token, user });
   } catch (err) {
