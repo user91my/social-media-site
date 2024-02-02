@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import {
   Box,
   Button,
@@ -50,16 +50,33 @@ const initialValuesLogin = {
   password: "password123",
 };
 
-const Form = () => {
+const Form = ({
+  isLoading,
+  setIsLoading,
+  isLoginEmailError,
+  setIsLoginEmailError,
+  isLoginPasswordError,
+  setIsLoginPasswordError,
+  isRegisterEmailError,
+  setIsRegisterEmailError,
+  registerSuccessNotification
+}) => {
   const [pageType, setPageType] = useState("login");
-  const { palette } = useTheme();
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const isNonMobile = useMediaQuery("(min-width:600px)");
   const isLogin = pageType === "login";
   const isRegister = pageType === "register";
 
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const { palette } = useTheme();
+  const isNonMobile = useMediaQuery("(min-width:600px)");
+
+  // REGISTER function
+  // ------------------
   const register = async (values, onSubmitProps) => {
+    // After "REGISTER" button is clicked, 'isLoading' is set to true.
+    setIsLoading(true);
+
     // Creates a new javascript 'FormData' object.
     // It constructs a set of key/value pairs representing form fields and their values.
     // This also allows us to send files alongside the form (as if the encoding type
@@ -69,11 +86,11 @@ const Form = () => {
     // Iterate through every Formik key-value field
     // (i.e. as defined in 'initialValuesRegister' object; firstName, lastName, etc.).
     for (let key in values) {
-      formData.append(key, values[key]); // Add every Formik key-value into 'formData' object.
+      formData.set(key, values[key]); // Add every Formik key-value into 'formData' object.
     }
     // Add another key-value field specifically for 'picturePath'.
     // The key is "picturePath" and value is the filename of the picture.
-    formData.append("picturePath", values.picture.name);
+    formData.set("picturePath", values.picture.name);
 
     const savedUserResponse = await fetch(
       `${process.env.REACT_APP_BASE_URL}/auth/register`,
@@ -83,16 +100,56 @@ const Form = () => {
       }
     );
     const savedUser = await savedUserResponse.json(); // parses the response body (from server) into json format.
-    onSubmitProps.resetForm(); // Calling Formik's resetForm() function.
 
-    // If user successfully registered, reset page type to 'login'.
+    // UNSUCCESSFUL user registration.
+    // (due to email already exists in the server).
+    // The response body contains an error 'msg' property.
+    // See "server\controllers\auth.js".
+    if (savedUser.msg) {
+      console.log(savedUser); // registration error message
+
+      // Create a plain object copy of formData ("formDataCopy").
+      // The key-values of "formDataCopy" will be used to repopulate
+      // the input fields in the registration page
+      const formDataCopy = {};
+      formData.forEach((value, key) => (formDataCopy[key] = value)); // Note: value and key is in reversed order in formData
+      console.log("formDataCopy", formDataCopy);
+
+      // Resets form BUT repopulates the input fields of the
+      // registration page with the key-values of "formDataCopy".
+      // HOWEVER, the "picture" field needs to be re-emptied so
+      // as to prevent "net::ERR_UPLOAD_FILE_CHANGED" error on the browser.
+      // https://formik.org/docs/migrating-v2#resetform
+      onSubmitProps.resetForm({
+        values: { ...formDataCopy, picture: "" },
+      });
+
+      setIsRegisterEmailError(true);
+      setIsLoading(false);
+      return;
+    }
+
+    // SUCCESSFUL user registration.
+    // If user registration is SUCCESSFUL, reset page type to 'login'.
     if (savedUser) {
+      setIsLoading(false);
+      onSubmitProps.resetForm(); // Calling Formik's resetForm() function.
       setPageType("login");
+      registerSuccessNotification()
     }
   };
 
+  // LOGIN function
+  // ------------------
   const login = async (values, onSubmitProps) => {
+    // After "LOGIN" button is clicked, 'isLoading' is set to true.
+    setIsLoading(true);
+
     // Fetching server payload from 'login' function in 'server\controllers\auth.js'.
+    // If successful, the payload will be :-
+    // { token , user }
+    // If unsuccessful, the payload will either be :-
+    // {msg: 'User does not exist.'}  OR  {msg: 'Invalid credentials.'}
     const loggedInResponse = await fetch(
       `${process.env.REACT_APP_BASE_URL}/auth/login`,
       {
@@ -106,13 +163,34 @@ const Form = () => {
       }
     );
     const loggedIn = await loggedInResponse.json(); // parses the response body (from server) into json format.
-    onSubmitProps.resetForm();
 
-    // If login to server successful, we call the 'setLogin' reducer
-    // from the redux store in 'client\src\state\index.js' in order to
-    // update the redux state (also in 'client\src\state\index.js').
+    // UNSUCCESSFUL login.
+    // (due to wrong email or password).
+    // The response body contains an error 'msg' property.
+    // See "server\controllers\auth.js".
+    if (loggedIn.msg) {
+      console.log(loggedIn); // login error message
+      switch (loggedIn.msg) {
+        case "User does not exist.": // wrong email
+          setIsLoginEmailError(true);
+          setIsLoginPasswordError(false);
+          break;
+        case "Invalid credentials.": // wrong password
+          setIsLoginEmailError(false);
+          setIsLoginPasswordError(true);
+          break;
+      }
+      setIsLoading(false);
+      return;
+    }
+
+    // SUCCESSFUL login.
+    // If login response received, we call the 'setLogin' reducer
+    // from the redux store in order to update the redux state.
+    // See "client\src\state\index.js".
     if (loggedIn) {
-      // Using Redux's dispatch function in order to call the 'setLogin' reducer.
+      console.log("Login Successful!", loggedIn);
+
       dispatch(
         setLogin({
           // 'user' and 'token' values derived from the json response fetched from the server
@@ -121,10 +199,14 @@ const Form = () => {
           token: loggedIn.token,
         })
       );
+      setIsLoading(false);
+      onSubmitProps.resetForm(); // Calling Formik's resetForm() function.
       navigate("/home");
     }
   };
 
+  // HANDLEFORMSUBMIT function
+  // --------------------------
   const handleFormSubmit = async (values, onSubmitProps) => {
     if (isLogin) await login(values, onSubmitProps);
     if (isRegister) await register(values, onSubmitProps);
@@ -175,9 +257,11 @@ const Form = () => {
               "& > div": { gridColumn: isNonMobile ? undefined : "span 4" },
             }}
           >
-            {/* Registration Page */}
+            {/* REGISTRATION FIELDS */}
+            {/* ------------------- */}
             {isRegister && (
               <>
+                {/* First Name */}
                 <TextField
                   label="First Name"
                   onBlur={handleBlur} // handles situation when clicking out of an input (i.e. input field loses focus).
@@ -192,6 +276,8 @@ const Form = () => {
                   helperText={touched.firstName && errors.firstName}
                   sx={{ gridColumn: "span 2" }}
                 />
+
+                {/* Last Name */}
                 <TextField
                   label="Last Name"
                   onBlur={handleBlur} // handles situation when clicking out of an input
@@ -202,6 +288,8 @@ const Form = () => {
                   helperText={touched.lastName && errors.lastName}
                   sx={{ gridColumn: "span 2" }}
                 />
+
+                {/* Location */}
                 <TextField
                   label="Location"
                   onBlur={handleBlur} // handles situation when clicking out of an input
@@ -212,6 +300,8 @@ const Form = () => {
                   helperText={touched.location && errors.location}
                   sx={{ gridColumn: "span 4" }}
                 />
+
+                {/* Occupation */}
                 <TextField
                   label="Occupation"
                   onBlur={handleBlur} // handles situation when clicking out of an input
@@ -224,6 +314,8 @@ const Form = () => {
                   helperText={touched.occupation && errors.occupation}
                   sx={{ gridColumn: "span 4" }}
                 />
+
+                {/* PICTURE FIELD + DROPZONE */}
                 <Box
                   gridColumn="span 4"
                   border={`1px solid ${palette.neutral.medium}`}
@@ -284,52 +376,138 @@ const Form = () => {
               </>
             )}
 
-            {/* Email & Password Fields */}
-            <TextField
-              label="Email"
-              onBlur={handleBlur}
-              onChange={handleChange}
-              value={values.email}
-              name="email"
-              error={Boolean(touched.email) && Boolean(errors.email)}
-              helperText={touched.email && errors.email}
-              sx={{ gridColumn: "span 4" }}
-            />
-            <TextField
-              label="Password"
-              type="password" // type set to 'password' so its value is hidden.
-              onBlur={handleBlur}
-              onChange={handleChange}
-              value={values.password}
-              name="password"
-              error={Boolean(touched.password) && Boolean(errors.password)}
-              helperText={touched.password && errors.password}
-              sx={{ gridColumn: "span 4" }}
-            />
+            {/* EMAIL + LOGIN FIELDS (FOR BOTH LOGIN & REGISTRATION) */}
+            {/* ------------ */}
+            {/* Email */}
+            <Box sx={{ gridColumn: "span 4" }}>
+              <TextField
+                label="Email"
+                onBlur={handleBlur}
+                onChange={(e) => {
+                  handleChange(e);
+                  if (isLoginEmailError) setIsLoginEmailError(false);
+                  if (isRegisterEmailError) setIsRegisterEmailError(false);
+                }}
+                value={values.email}
+                name="email"
+                error={Boolean(touched.email) && Boolean(errors.email)}
+                helperText={touched.email && errors.email}
+                sx={{
+                  width: "100%",
+                  // Email input label class
+                  "& .css-u1iww8-MuiFormLabel-root-MuiInputLabel-root": {
+                    color:
+                      isLoginEmailError || isRegisterEmailError
+                        ? "#f44336"
+                        : undefined,
+                  },
+                  // Email input class
+                  "& .css-hswy5r-MuiInputBase-root-MuiOutlinedInput-root": {
+                    color:
+                      isLoginEmailError || isRegisterEmailError
+                        ? "#f44336"
+                        : undefined,
+                  },
+                }}
+              />
+              {isLoginEmailError || isRegisterEmailError ? (
+                <Box
+                  width="max-content"
+                  fontSize="0.65rem"
+                  mt="3px"
+                  ml="14px"
+                  color="#f44336"
+                >
+                  {isLoginEmailError
+                    ? "EMAIL DOESN'T EXIST"
+                    : isRegisterEmailError
+                    ? "EMAIL ALREADY EXIST"
+                    : null}
+                </Box>
+              ) : null}
+            </Box>
+
+            {/* Password*/}
+            <Box sx={{ gridColumn: "span 4" }}>
+              <TextField
+                label="Password"
+                type="password" // type set to 'password' so its value is hidden.
+                onBlur={handleBlur}
+                onChange={(e) => {
+                  handleChange(e);
+                  if (isLoginPasswordError) setIsLoginPasswordError(false);
+                }}
+                value={values.password}
+                name="password"
+                error={Boolean(touched.password) && Boolean(errors.password)}
+                helperText={touched.password && errors.password}
+                sx={{
+                  width: "100%",
+                  "& .css-u1iww8-MuiFormLabel-root-MuiInputLabel-root": {
+                    color: isLoginPasswordError ? "#f44336" : undefined,
+                  },
+                  "& .css-hswy5r-MuiInputBase-root-MuiOutlinedInput-root": {
+                    color: isLoginPasswordError ? "#f44336" : undefined,
+                  },
+                }}
+              />
+              {isLoginPasswordError ? (
+                <Box
+                  width="max-content"
+                  fontSize="0.65rem"
+                  mt="3px"
+                  ml="14px"
+                  color="#f44336"
+                >
+                  INVALID PASSWORD
+                </Box>
+              ) : null}
+            </Box>
           </Box>
 
           <Box>
             {/* LOGIN/REGISTER BUTTON */}
             <Button
-              onClick={() => console.log(values)}
+              onClick={() =>
+                console.log(
+                  `${isLogin ? "LOGIN" : "REGISTER"} to server`,
+                  values
+                )
+              }
               fullWidth
+              disabled={isLoading ? true : false}
               type="submit"
               sx={{
                 m: "2rem 0",
-                p: "1rem",
+                p: "0.6rem",
                 backgroundColor: palette.primary.main,
                 color: palette.background.alt,
                 "&:hover": { color: palette.primary.main },
               }}
             >
-              {isLogin ? "LOGIN" : "REGISTER"}
+              <Box position="relative" display="flex" alignItems="center">
+                <Box>{isLogin ? "LOGIN" : "REGISTER"}</Box>
+                {isLoading ? (
+                  <Box
+                    position="absolute"
+                    left={isLogin ? "30px" : "45px"}
+                    top="-8px"
+                  >
+                    {/* Loading image : https://loading.io/ */}
+                    <img src="./assets/Rolling-1s-200px.svg" width="35px" />
+                  </Box>
+                ) : null}
+              </Box>
             </Button>
 
-            {/* Signup / Login Message Link */}
+            {/* "HAVE/DON'T HAVE ACCOUNT?" LINK */}
             <Typography
               onClick={() => {
-                setPageType(isLogin ? "register" : "login");
+                setIsLoginEmailError(false);
+                setIsRegisterEmailError(false);
+                setIsLoginPasswordError(false);
                 resetForm();
+                setPageType(isLogin ? "register" : "login");
               }}
               sx={{
                 textDecoration: "underline",

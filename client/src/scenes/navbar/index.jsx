@@ -167,8 +167,10 @@ const Navbar = () => {
             onClick={(event) => event.stopPropagation()} // prevents propagation to the parent
             position="absolute"
             right="0"
-            width="55vw"
+            width="30vw"
+            minWidth="190px"
             height="100%"
+            boxShadow={`0 0 25px 5px ${theme.palette.neutral.mediumMain}`}
             backgroundColor={hexToRgba(background, 1)}
           >
             {/* Close Button */}

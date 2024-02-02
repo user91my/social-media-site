@@ -1,10 +1,45 @@
 import { Box, Typography, useTheme, useMediaQuery } from "@mui/material";
 import Form from "./Form";
+import { useEffect, useState } from "react";
+import toast, { Toaster } from "react-hot-toast";
 
 const LoginPage = () => {
   const theme = useTheme();
   const primary = theme.palette.primary.main;
   const isNonMobileScreens = useMediaQuery("(min-width: 1000px)");
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoginEmailError, setIsLoginEmailError] = useState(false);
+  const [isLoginPasswordError, setIsLoginPasswordError] = useState(false);
+  const [isRegisterEmailError, setIsRegisterEmailError] = useState(false);
+
+  const registerSuccessNotification = () =>
+    toast.success("Registration Successful!", {
+      duration: 5000,
+      position: "top-center",
+      style: {
+        background: `linear-gradient(
+          180deg, 
+          ${theme.palette.primary[500]}, 
+          ${theme.palette.primary[800]}
+        )`,
+        color: theme.palette.neutral.dark,
+      },
+    });
+
+  useEffect(() => {
+    console.log("----");
+    console.log(`isLoading = ${isLoading}`);
+    console.log(`isLoginEmailError = ${isLoginEmailError}`);
+    console.log(`isLoginPasswordError = ${isLoginPasswordError}`);
+    console.log(`isRegisterEmailError = ${isRegisterEmailError}`);
+  }, [
+    isLoading,
+    isLoginEmailError,
+    isLoginPasswordError,
+    isRegisterEmailError,
+  ]);
+
   return (
     <Box
       display="flex"
@@ -45,8 +80,22 @@ const LoginPage = () => {
         </Typography>
 
         {/* FORM */}
-        <Form />
+        <Form
+          isLoading={isLoading}
+          setIsLoading={setIsLoading}
+          isLoginEmailError={isLoginEmailError}
+          setIsLoginEmailError={setIsLoginEmailError}
+          isLoginPasswordError={isLoginPasswordError}
+          setIsLoginPasswordError={setIsLoginPasswordError}
+          isRegisterEmailError={isRegisterEmailError}
+          setIsRegisterEmailError={setIsRegisterEmailError}
+          registerSuccessNotification={registerSuccessNotification}
+        />
       </Box>
+
+      {/* TOASTER ELEMENT */}
+      <Toaster />
+      {/* <button onClick={registerSuccessNotification}>Success</button> */}
     </Box>
   );
 };
