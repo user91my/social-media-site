@@ -59,7 +59,7 @@ const Form = ({
   setIsLoginPasswordError,
   isRegisterEmailError,
   setIsRegisterEmailError,
-  registerSuccessNotification
+  registerSuccessNotification,
 }) => {
   const [pageType, setPageType] = useState("login");
   const isLogin = pageType === "login";
@@ -135,7 +135,7 @@ const Form = ({
       setIsLoading(false);
       onSubmitProps.resetForm(); // Calling Formik's resetForm() function.
       setPageType("login");
-      registerSuccessNotification()
+      registerSuccessNotification();
     }
   };
 
@@ -394,26 +394,12 @@ const Form = ({
                 helperText={touched.email && errors.email}
                 sx={{
                   width: "100%",
-                  // Email input label class
-                  "& .css-u1iww8-MuiFormLabel-root-MuiInputLabel-root": {
-                    color:
-                      isLoginEmailError || isRegisterEmailError
-                        ? "#f44336"
-                        : undefined,
-                  },
-                  // Email input class
-                  "& .css-hswy5r-MuiInputBase-root-MuiOutlinedInput-root": {
-                    color:
-                      isLoginEmailError || isRegisterEmailError
-                        ? "#f44336"
-                        : undefined,
-                  },
                 }}
               />
               {isLoginEmailError || isRegisterEmailError ? (
                 <Box
                   width="max-content"
-                  fontSize="0.65rem"
+                  fontSize="0.75rem"
                   mt="3px"
                   ml="14px"
                   color="#f44336"
@@ -443,18 +429,12 @@ const Form = ({
                 helperText={touched.password && errors.password}
                 sx={{
                   width: "100%",
-                  "& .css-u1iww8-MuiFormLabel-root-MuiInputLabel-root": {
-                    color: isLoginPasswordError ? "#f44336" : undefined,
-                  },
-                  "& .css-hswy5r-MuiInputBase-root-MuiOutlinedInput-root": {
-                    color: isLoginPasswordError ? "#f44336" : undefined,
-                  },
                 }}
               />
               {isLoginPasswordError ? (
                 <Box
                   width="max-content"
-                  fontSize="0.65rem"
+                  fontSize="0.75rem"
                   mt="3px"
                   ml="14px"
                   color="#f44336"
