@@ -6,8 +6,9 @@ https://social-media-site-frontend.vercel.app/
 - A simple mock social media site with login functionality.
 - Login credentials are already filled in the login fields.
 - Registration doesn't work (See below)
+- There are buttons throughout the application that are merely placeholders (i.e. just for visual appearance) and have no functionality.
 
-## REGISTRATION DOESN'T WORK :
+## REGISTRATION WILL NOT WORK :
 
 - Registration will NOT work because the site's image storage mechanism is not hooked to a 3rd party file storage/bucket (i.e. S3 bucket). Attempting to register will result in an error as the following:-
 
